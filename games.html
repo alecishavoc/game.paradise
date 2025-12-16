@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Games</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Top bar -->
+  <div class="app-bar">
+    <div class="recent" id="recentList"></div>
+    <div class="nav">
+      <a href="homepage.html">Home</a>
+      <a class="active" href="games.html">Games</a>
+      <a href="settings.html">Settings</a>
+    </div>
+    <div class="search">
+      <input id="searchInput" type="search" placeholder="Search games…" aria-label="Search games">
+      <select id="filterMode" title="Scope" aria-label="Scope filter">
+        <option value="all">All Games</option>
+        <option value="section">Current Section</option>
+      </select>
+      <select id="sortMode" title="Sort" aria-label="Sort filter">
+        <option value="az">A–Z</option>
+        <option value="recent">Recently Played</option>
+        <option value="hasImage">Has Image</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Declarative config area -->
+  <div id="game-config">
+    <section name="Skill Games" img="skill-games.img">
+      <sub-section name="FNF Games" img="fnf-games.img">
+        <mass-import src="mass-game-import\fnf-games.html"></mass-import>
+      </sub-section>
+      <sub-section name="Platformers" img="fnf-games.img">
+        <mass-import src="mass-game-import\fnf-games.html"></mass-import>
+      </sub-section>
+    </section>
+    <import-game src="examplegame.html" img="randomgame.img"></import-game>
+  </div>
+
+  <!-- Rendered UI -->
+  <div class="container">
+    <div id="sectionsGrid" class="sections-grid"></div>
+    <div id="gamesList" class="games-list hidden"></div>
+    <button id="backBtn" class="button hidden">Back</button>
+  </div>
+
+  <script>
+    // ----- State -----
+    const STORAGE_KEYS = { recent: 'fnf_recent', history: 'fnf_history' };
+    let allGames = [];
+    let currentSectionGames = [];
+    let rootSections = [];
+    // ----- Expanded FNF / Flixel image paths (jsDelivr-friendly) -----
+const EXPANDED_IMAGE_PATHS = [
+  'icon.png',
+  
+
+  'assets/images/icon.png',
+  'assets/images/menuBG.png',
+  'assets/images/titleBG.png',
+  'assets/images/storymenu.png',
+
+  'assets/shared/images/icon.png',
+  'assets/shared/images/menuBG.png',
+  'assets/shared/images/titleBG.png',
+
+  'preload/images/icon.png',
+  'preload/images/menuBG.png',
+  'preload/images/titleBG.png',
+
+  'export/html5/bin/icon.png',
+  'export/html5/bin/favicon.png',
+
+  'bin/icon.png',
+  
+
+  'images/icon.png',
+  'images/menuBG.png',
+
+  'thumb.png',
+  'thumbnail.png'
+];
+
+const DEFAULT_GAME_IMAGE =
+  'https://cdn.jsdelivr.net/gh/YOURUSER/YOURREPO/thumbnails/default.png';
+    // ----- Utilities -----
+    function renderRecent() {
+      const list = document.getElementById('recentList');
+      list.innerHTML = '';
+      const recent = JSON.parse(localStorage.getItem(STORAGE_KEYS.recent) || '[]').slice(0, 5);
+      for (const item of recent) {
+        const div = document.createElement('div');
+        div.className = 'recent-item';
+        div.textContent = item.name;
+        list.appendChild(div);
+      }
+    }
+
+    async function loadMassImport(src) {
+      const res = await fetch(src);
+      const text = await res.text();
+      const lines = text.split('\n');
+      const games = [];
+      let current = {};
+      for (const raw of lines) {
+        const line = raw.trim();
+        if (!line) continue;
+        if (line.startsWith('name=')) current.name = line.slice(5);
+        else if (line.startsWith('link=')) current.link = line.slice(5);
+        else if (line.startsWith('image=')) {
+          current.image = line.slice(6);
+          if (current.name && current.link) games.push(current);
+          current = {};
+        }
+      }
+      return games;
+    }
+
+    function parseSectionNode(node) {
+      const section = {
+        id: node.getAttribute('name'),
+        title: node.getAttribute('name'),
+        image: node.getAttribute('img'),
+        children: [],
+        imports: [] // {type:'mass',src} or {type:'single',src,img}
+      };
+
+      node.querySelectorAll(':scope > sub-section').forEach(sub => {
+        section.children.push(parseSectionNode(sub));
+      });
+
+      node.querySelectorAll(':scope > mass-import').forEach(mi => {
+        const src = mi.getAttribute('src');
+        if (src) section.imports.push({ type: 'mass', src });
+      });
+
+      node.querySelectorAll(':scope > import-game').forEach(ig => {
+        const src = ig.getAttribute('src');
+        const img = ig.getAttribute('img') || '';
+        if (src) section.imports.push({ type: 'single', src, img });
+      });
+
+      return section;
+    }
+
+    async function parseAndPreloadConfig() {
+      const config = document.getElementById('game-config');
+
+      // Build section tree
+      rootSections = Array.from(config.querySelectorAll(':scope > section')).map(parseSectionNode);
+
+      // Collect imports
+      const massSrcs = new Set();
+      const singles = [];
+
+      function collect(section) {
+        for (const imp of section.imports) {
+          if (imp.type === 'mass') massSrcs.add(imp.src);
+          else if (imp.type === 'single') singles.push(imp);
+        }
+        section.children.forEach(collect);
+      }
+      rootSections.forEach(collect);
+
+      // Preload mass imports
+      const massLoaded = await Promise.all(Array.from(massSrcs).map(src => loadMassImport(src)));
+      const massGames = massLoaded.flat();
+
+      const singleGames = singles.map(s => ({
+        name: s.src.replace(/\.html$/i, ''),
+        link: s.src,
+        image: s.img || ''
+      }));
+
+      allGames = dedupeByName([...massGames, ...singleGames]);
+
+      renderRecent();
+      renderSections(rootSections);
+    }
+
+    function dedupeByName(arr) {
+      const map = new Map();
+      for (const g of arr) {
+        if (!map.has(g.name)) map.set(g.name, g);
+      }
+      return Array.from(map.values());
+    }
+    async function resolveGameImage(game) {
+  if (game.image && game.image.trim()) return game.image;
+
+  const base = game.link.replace(/[^/]+$/, '');
+
+  for (const rel of EXPANDED_IMAGE_PATHS) {
+    const url = base + rel;
+    try {
+      const res = await fetch(url, { method: 'HEAD' });
+      if (res.ok) return url;
+    } catch {}
+  }
+
+  return DEFAULT_GAME_IMAGE;
+}
+    // ----- Rendering -----
+    function renderSections(sections, lineage = []) {
+      const grid = document.getElementById('sectionsGrid');
+      grid.innerHTML = '';
+      document.getElementById('gamesList').classList.add('hidden');
+      document.getElementById('sectionsGrid').classList.remove('hidden');
+      document.getElementById('backBtn').classList.toggle('hidden', lineage.length === 0);
+
+      for (const sec of sections) {
+        const card = document.createElement('div');
+        card.className = 'section-card';
+        if (sec.image) {
+          card.style.backgroundImage = `url('${sec.image}')`;
+          card.style.backgroundSize = 'cover';
+          card.style.backgroundPosition = 'center';
+        }
+        const label = document.createElement('div');
+        label.className = 'section-info';
+        label.innerHTML = `<h3 class="section-title">${sec.title}</h3>`;
+        card.appendChild(label);
+
+        card.addEventListener('click', async () => {
+          if (sec.children && sec.children.length) {
+            renderSections(sec.children, [...lineage, sec]);
+            return;
+          }
+
+          let gamesToShow = [];
+          for (const imp of sec.imports) {
+            if (imp.type === 'mass') {
+              const imported = await loadMassImport(imp.src);
+              gamesToShow.push(...imported);
+            } else {
+              gamesToShow.push({
+                name: imp.src.replace(/\.html$/i, ''),
+                link: imp.src,
+                image: imp.img || ''
+              });
+            }
+          }
+          currentSectionGames = dedupeByName(gamesToShow);
+          showGamesList(currentSectionGames);
+        });
+
+        grid.appendChild(card);
+      }
+
+      const backBtn = document.getElementById('backBtn');
+      backBtn.onclick = () => {
+        if (lineage.length <= 1) renderSections(rootSections, []);
+        else renderSections(lineage[lineage.length - 2].children, lineage.slice(0, -1));
+      };
+    }
+
+    function showGamesList(games) {
+      const list = document.getElementById('gamesList');
+      list.innerHTML = '';
+      list.classList.remove('hidden');
+      document.getElementById('sectionsGrid').classList.add('hidden');
+
+      const filtered = applyFiltersForCurrentView(games, document.getElementById('searchInput').value);
+      for (const g of filtered) {
+        const card = document.createElement('div');
+        card.className = 'game-card';
+
+        const thumb = document.createElement('div');
+        thumb.className = 'game-thumb';
+        resolveGameImage(g).then(img => {
+  thumb.style.backgroundImage = `url('${img}')`;
+});
+        const info = document.createElement('div');
+        info.className = 'game-info';
+
+        const titleEl = document.createElement('h3');
+        titleEl.className = 'game-title';
+        titleEl.textContent = g.name;
+
+        const playBtn = document.createElement('button');
+        playBtn.className = 'button';
+        playBtn.textContent = 'Play';
+        playBtn.addEventListener('click', () => playGame(g));
+
+        info.appendChild(titleEl);
+        info.appendChild(playBtn);
+
+        card.appendChild(thumb);
+        card.appendChild(info);
+        list.appendChild(card);
+      }
+    }
+
+    // ----- Helpers for about:blank injection -----
+    function getBaseHrefFromLink(link) {
+      try {
+        // Strip filename, keep directory for proper relative resolution
+        const url = new URL(link);
+        // e.g., https://cdn.jsdelivr.net/gh/user/repo/path/file.html -> https://cdn.jsdelivr.net/gh/user/repo/path/
+        const parts = url.pathname.split('/');
+        parts.pop(); // remove last segment (filename)
+        const dir = parts.join('/') + '/';
+        return url.origin + dir;
+      } catch {
+        // Fallback: best-effort by chopping at last slash
+        const i = link.lastIndexOf('/');
+        return i > -1 ? link.slice(0, i + 1) : link;
+      }
+    }
+
+    function injectBaseIntoHTML(htmlText, baseHref, titleText) {
+      // Ensure we have a <head> and inject <base> as the first element inside it.
+      const baseTag = `<base href="${baseHref}">`;
+
+      // Try to inject into an existing <head> (case-insensitive)
+      const headOpenRegex = /<head[^>]*>/i;
+      if (headOpenRegex.test(htmlText)) {
+        htmlText = htmlText.replace(headOpenRegex, match => `${match}${baseTag}`);
+      } else {
+        // No head found — create one at the top with base and optional title
+        const safeTitle = String(titleText || '').replace(/[<>&"]/g, s => ({
+          '<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'
+        }[s]));
+        htmlText = `<!doctype html><html><head>${baseTag}<meta charset="utf-8"><title>${safeTitle}</title></head>` + htmlText.replace(/^\s*<!doctype[^>]*>/i, '').replace(/^\s*<html[^>]*>/i, '').replace(/^\s*<head[^>]*>[\s\S]*?<\/head>/i, '');
+        // Strip any existing doctype/html/head to avoid duplicates
+      }
+
+      // Optionally update title if a <title> exists
+      if (titleText) {
+        const titleRegex = /<title[^>]*>[\s\S]*?<\/title>/i;
+        if (titleRegex.test(htmlText)) {
+          htmlText = htmlText.replace(titleRegex, `<title>${titleText}</title>`);
+        }
+      }
+      return htmlText;
+    }
+
+    // ----- Play: fetch HTML, fix base, write into about:blank -----
+    async function playGame(g) {
+      const now = Date.now();
+      const recent = JSON.parse(localStorage.getItem(STORAGE_KEYS.recent) || '[]');
+      const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.history) || '[]');
+
+      const filteredRecent = recent.filter(r => r.name !== g.name);
+      filteredRecent.unshift({ name: g.name, link: g.link, image: g.image || '', time: now });
+      localStorage.setItem(STORAGE_KEYS.recent, JSON.stringify(filteredRecent.slice(0, 50)));
+
+      history.unshift({ name: g.name, link: g.link, image: g.image || '', time: now });
+      localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(history.slice(0, 2000)));
+
+      renderRecent();
+
+      try {
+        const response = await fetch(g.link + '?t=' + Date.now(), { cache: 'no-store' });
+        const rawText = await response.text();
+
+        const baseHref = getBaseHrefFromLink(g.link);
+        const fixedText = injectBaseIntoHTML(rawText, baseHref, g.name);
+
+        const newWin = window.open('about:blank', '_blank');
+        if (!newWin) {
+          window.open(g.link, '_blank', 'noopener');
+          return;
+        }
+        newWin.document.open();
+        newWin.document.write(fixedText);
+        newWin.document.close();
+        try { newWin.document.title = g.name; } catch {}
+      } catch (err) {
+        console.error('Failed to load game:', err);
+        window.open(g.link, '_blank', 'noopener');
+      }
+    }
+
+    // ----- Search & Filters -----
+    const searchInput = document.getElementById('searchInput');
+    const filterMode = document.getElementById('filterMode');
+    const sortMode = document.getElementById('sortMode');
+
+    function applyFilters(games, query) {
+      let result = games;
+      const q = (query || '').toLowerCase().trim();
+      if (q) result = result.filter(g => g.name.toLowerCase().includes(q));
+
+      const sort = sortMode.value;
+      if (sort === 'az') {
+        result = result.slice().sort((a, b) => a.name.localeCompare(b.name));
+      } else if (sort === 'recent') {
+        const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.history) || '[]');
+        const timeByName = new Map(history.map(h => [h.name, h.time || 0]));
+        result = result.slice().sort((a, b) => (timeByName.get(b.name) || 0) - (timeByName.get(a.name) || 0));
+      } else if (sort === 'hasImage') {
+        result = result.filter(g => !!(g.image && g.image.trim() !== ''));
+      }
+      return result;
+    }
+
+    function applyFiltersForCurrentView(baseGames, query) {
+      const scope = filterMode.value === 'all' ? allGames : baseGames;
+      return applyFilters(scope, query);
+    }
+
+    function refreshCurrentView() {
+      const isSectionsHidden = document.getElementById('sectionsGrid').classList.contains('hidden');
+      if (isSectionsHidden) {
+        showGamesList(currentSectionGames);
+      } else {
+        renderSections(rootSections);
+      }
+    }
+
+    searchInput.addEventListener('input', () => {
+      const isSectionsHidden = document.getElementById('sectionsGrid').classList.contains('hidden');
+      if (isSectionsHidden) {
+        const filtered = applyFiltersForCurrentView(currentSectionGames, searchInput.value);
+        showGamesList(filtered);
+      } else {
+        const filtered = applyFiltersForCurrentView(allGames, searchInput.value);
+        currentSectionGames = filtered;
+        showGamesList(filtered);
+      }
+    });
+
+    filterMode.addEventListener('change', refreshCurrentView);
+    sortMode.addEventListener('change', refreshCurrentView);
+
+    // ----- Init -----
+    (async function init() {
+      renderRecent();
+      await parseAndPreloadConfig();
+    })();
+  </script>
+</body>
+</html>

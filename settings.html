@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Settings</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-bar">
+    <div class="recent" id="recentList"></div>
+    <div class="nav">
+      <a href="homepage.html">Home</a>
+      <a href="games.html">Games</a>
+      <a href="settings.html">Settings</a>
+    </div>
+    <div class="search">
+      <input id="searchInput" type="search" placeholder="Search games…">
+    </div>
+  </div>
+
+  <div class="container">
+    <h2>Game History</h2>
+    <div id="historyList"></div>
+    <button onclick="clearHistory()">Clear History</button>
+  </div>
+
+  <script>
+    const STORAGE_KEYS = { history: 'fnf_history', recent: 'fnf_recent' };
+
+    function renderRecent() {
+      const list = document.getElementById('recentList');
+      list.innerHTML = '';
+      const recent = JSON.parse(localStorage.getItem(STORAGE_KEYS.recent) || '[]').slice(0,5);
+      recent.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'recent-item';
+        div.textContent = item.name;
+        list.appendChild(div);
+      });
+    }
+
+    function renderHistory() {
+      const container = document.getElementById('historyList');
+      container.innerHTML = '';
+      const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.history) || '[]');
+      history.forEach(h => {
+        const div = document.createElement('div');
+        div.textContent = `${h.name} — ${new Date(h.time).toLocaleString()}`;
+        container.appendChild(div);
+      });
+    }
+
+    function clearHistory() {
+      localStorage.removeItem(STORAGE_KEYS.history);
+      renderHistory();
+    }
+
+    renderRecent();
+    renderHistory();
+  </script>
+</body>
+</html>
