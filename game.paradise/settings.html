@@ -2,61 +2,490 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Settings</title>
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings | Game Paradise</title>
+  <style>
+    :root {
+      --bg: #0b0b0b;
+      --surface: #121212;
+      --text: #eaeaea;
+      --accent: #3aa0ff;
+      --border: #222;
+      --radius: 10px;
+    }
+
+    body, html {
+      margin: 0; padding: 0;
+      height: 100%; width: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    /* --- Custom Scrollbars --- */
+    ::-webkit-scrollbar { width: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; border: 1px solid var(--border); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+    /* --- App Bar --- */
+    .app-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      background: #111; padding: 0 20px; height: 60px; box-sizing: border-box;
+      border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 1001;
+    }
+    .nav { display: flex; gap: 20px; align-items: center; }
+    .nav a { color: var(--text); text-decoration: none; font-weight: bold; font-size: 14px; }
+    .nav a.active { color: var(--accent); }
+
+    .pfp-small {
+      width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--accent);
+      background-size: cover; background-position: center; background-color: #000; cursor: pointer;
+    }
+
+    /* --- Settings Layout --- */
+    .settings-wrapper {
+      max-width: 900px; margin: 0 auto; padding: 40px 20px;
+      height: calc(100vh - 100px); overflow-y: auto;
+    }
+
+    .settings-nav {
+      display: flex; justify-content: space-between; 
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 10px; margin-bottom: 30px;
+    }
+    .s-tab {
+      padding: 12px 20px; cursor: pointer; border-radius: 8px;
+      font-weight: 600; font-size: 13px; color: #888; transition: 0.2s;
+    }
+    .s-tab:hover { background: #1a1a1a; color: var(--text); }
+    .s-tab.active { background: var(--accent); color: white; }
+
+    .settings-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 30px;
+      animation: fadeIn 0.3s ease;
+      margin-bottom: 50px;
+    }
+
+    .setting-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 15px 0; border-bottom: 1px solid #1a1a1a;
+    }
+    .setting-row:last-child { border-bottom: none; }
+
+    .label-group h4 { margin: 0; font-size: 16px; color: var(--accent); }
+    .label-group p { margin: 5px 0 0; font-size: 12px; color: #666; }
+
+    .btn-action {
+      background: #222; color: white; border: 1px solid var(--border);
+      padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600;
+      transition: 0.2s; outline: none;
+    }
+    .btn-action:hover { background: var(--accent); border-color: var(--accent); }
+
+    select.btn-action { padding: 8px 30px 8px 12px; appearance: none; }
+
+    input[type="color"] {
+      width: 40px; height: 40px; border: none; border-radius: 5px; background: none; cursor: pointer;
+    }
+
+    input[type="checkbox"] {
+      width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .user-list-item {
+      display: flex; align-items: center; gap: 12px; 
+      padding: 12px; background: rgba(0,0,0,0.2); 
+      border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--border);
+    }
+    .user-list-pfp { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--accent); object-fit: cover; }
+    .user-list-info { flex: 1; overflow: hidden; }
+    .user-list-name { font-weight: bold; font-size: 14px; display: block; }
+    .user-list-bio { font-size: 11px; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-list-actions { display: flex; gap: 5px; }
+    .btn-small { padding: 5px 10px; font-size: 10px; border-radius: 4px; }
+  </style>
 </head>
 <body>
+
   <div class="app-bar">
-    <div class="recent" id="recentList"></div>
     <div class="nav">
       <a href="homepage.html">Home</a>
       <a href="games.html">Games</a>
-      <a href="settings.html">Settings</a>
+      <a href="settings.html" class="active">Settings</a>
+      <a href="proxy.html">Proxy</a>
     </div>
-    <div class="search">
-      <input id="searchInput" type="search" placeholder="Search games…">
+    <div class="profile-trigger" onclick="location.href='profile.html'">
+      <div id="userProfilePic" class="pfp-small"></div>
     </div>
   </div>
 
-  <div class="container">
-    <h2>Game History</h2>
-    <div id="historyList"></div>
-    <button onclick="clearHistory()">Clear History</button>
+  <div class="settings-wrapper">
+    <div class="settings-nav">
+      <div class="s-tab active" onclick="switchTab(this, 'Account Info')">Account Info</div>
+      <div class="s-tab" onclick="switchTab(this, 'Ui/Apperance')">Ui/Apperance</div>
+      <div class="s-tab" onclick="switchTab(this, 'Users')">Users</div>
+      <div class="s-tab" onclick="switchTab(this, 'History')">History</div>
+      <div class="s-tab" onclick="switchTab(this, 'Extras')">Extras</div>
+    </div>
+
+    <div id="settingsContent" class="settings-card">
+        </div>
   </div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
 
   <script>
-    const STORAGE_KEYS = { history: 'fnf_history', recent: 'fnf_recent' };
+    const firebaseConfig = {
+        apiKey: "AIzaSyAgsZ68VNL-b5AsWnzll2g_C1Yhw7IowlY",
+        authDomain: "gameparadiserawdata.firebaseapp.com",
+        projectId: "gameparadiserawdata",
+        appId: "1:6326540558:web:8115f5520f0737b239df5f"
+    };
+    
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
 
-    function renderRecent() {
-      const list = document.getElementById('recentList');
-      list.innerHTML = '';
-      const recent = JSON.parse(localStorage.getItem(STORAGE_KEYS.recent) || '[]').slice(0,5);
-      recent.forEach(item => {
-        const div = document.createElement('div');
-        div.className = 'recent-item';
-        div.textContent = item.name;
-        list.appendChild(div);
-      });
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        loadUserTheme(user.uid); // <--- Add this
+        db.collection("users").doc(user.uid).get().then(doc => {
+          if(doc.exists && doc.data().photoURL) {
+            document.getElementById('userProfilePic').style.backgroundImage = `url('${doc.data().photoURL}')`;
+          }
+        });
+
+        
+
+        switchTab(document.querySelector('.s-tab'), 'Account Info');
+     } else {
+        window.location.href = "login.html";
+      }
+    });
+
+    function loadUserTheme(uid) {
+        db.collection("users").doc(uid).collection("settings").doc("appearance").get().then(doc => {
+            if (doc.exists) {
+                const data = doc.data();
+                const root = document.documentElement;
+                const presets = {
+                    'red': {bg: '#1a0505', surf: '#250a0a', bord: '#451515'},
+                    'blue': {bg: '#050a1a', surf: '#0a1425', bord: '#152545'},
+                    'green': {bg: '#051a05', surf: '#0a250a', bord: '#154515'},
+                    'yellow': {bg: '#1a1a05', surf: '#25250a', bord: '#454515'},
+                    'orange': {bg: '#1a1005', surf: '#25150a', bord: '#452515'},
+                    'purple': {bg: '#10051a', surf: '#150a25', bord: '#251545'},
+                    'pink': {bg: '#1a0510', surf: '#250a15', bord: '#451525'},
+                    'black': {bg: '#000000', surf: '#080808', bord: '#111'},
+                    'white': {bg: '#f0f0f0', surf: '#ffffff', bord: '#ccc'},
+                    'gray': {bg: '#1a1a1a', surf: '#222222', bord: '#333'},
+                    'cyberpunk': {bg: '#000000', surf: '#0a0a1a', bord: '#ff0055'},
+                    'nordic': {bg: '#2e3440', surf: '#3b4252', bord: '#4c566a'},
+                    'amethyst': {bg: '#0f051a', surf: '#180a25', bord: '#351545'},
+                    'midnight': {bg: '#020205', surf: '#050510', bord: '#101030'},
+                    'matrix': {bg: '#000500', surf: '#001000', bord: '#00ff41'},
+                    'oceanic': {bg: '#010b13', surf: '#021627', bord: '#032b4d'},
+                    'lava': {bg: '#100000', surf: '#200000', bord: '#ff4500'},
+                    'vaporwave': {bg: '#1a0033', surf: '#2d0059', bord: '#ff71ce'},
+                    'forest': {bg: '#0a1005', surf: '#15200a', bord: '#2d4d1a'},
+                    'space': {bg: '#05000a', surf: '#0b001a', bord: '#4b0082'}
+                };
+                if (presets[data.themePreset]) {
+                    const p = presets[data.themePreset];
+                    root.style.setProperty('--bg', p.bg);
+                    root.style.setProperty('--surface', p.surf);
+                    root.style.setProperty('--border', p.bord);
+                }
+                if (data.accentColor) root.style.setProperty('--accent', data.accentColor);
+                if (data.textColor) root.style.setProperty('--text', data.textColor);
+            }
+        });
     }
 
-    function renderHistory() {
-      const container = document.getElementById('historyList');
-      container.innerHTML = '';
-      const history = JSON.parse(localStorage.getItem(STORAGE_KEYS.history) || '[]');
-      history.forEach(h => {
-        const div = document.createElement('div');
-        div.textContent = `${h.name} — ${new Date(h.time).toLocaleString()}`;
-        container.appendChild(div);
-      });
-    }
+    async function switchTab(el, tabName) {
+      document.querySelectorAll('.s-tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      
+      const content = document.getElementById('settingsContent');
+      
+      if(tabName === 'Account Info') {
+        content.innerHTML = `
+          <div class="setting-row">
+            <div class="label-group">
+              <h4>Profile Identity</h4>
+              <p>Manage your username, bio, and social presence.</p>
+            </div>
+            <button class="btn-action" onclick="location.href='profile.html'">Open Profile</button>
+          </div>
+          <div class="setting-row">
+            <div class="label-group">
+              <h4>Account Email</h4>
+              <p>${auth.currentUser ? auth.currentUser.email : 'Loading...'}</p>
+            </div>
+          </div>
+          <div class="setting-row">
+            <div class="label-group">
+              <h4>Security & Sessions</h4>
+              <p>Secure your account or sign out of this device.</p>
+            </div>
+            <button class="btn-action" style="color:#ff4b4b; border-color:#422;" onclick="auth.signOut()">Sign Out</button>
+          </div>
+        `;
+      } 
+      else if(tabName === 'Ui/Apperance') {
+        const snap = await db.collection("users").doc(auth.currentUser.uid).collection("settings").doc("appearance").get();
+        const data = snap.exists ? snap.data() : {};
 
-    function clearHistory() {
-      localStorage.removeItem(STORAGE_KEYS.history);
-      renderHistory();
-    }
+        const currentAccent = data.accentColor || "#3aa0ff";
+        const currentTheme = data.themePreset || "default";
+        const currentGlow = data.borderGlow ? 'checked' : '';
+        const currentGlass = data.glassMode ? 'checked' : '';
 
-    renderRecent();
+        content.innerHTML = `
+          <div class="setting-row">
+            <div class="label-group">
+              <h4>Accent Color</h4>
+              <p>Change the site's primary color theme.</p>
+            </div>
+            <input type="color" id="accentPicker" value="${currentAccent}">
+          </div>
+
+          <div class="setting-row">
+            <div class="label-group">
+              <h4>Text Color</h4>
+              <p>Change the global color of the text.</p>
+            </div>
+            <input type="color" id="textPicker" value="${data.textColor || '#eaeaea'}">
+          </div>
+
+          <div class="setting-row">
+            <div class="label-group">
+              <h4>Theme Preset</h4>
+              <p>Select a pre-designed interface style.</p>
+            </div>
+            <select class="btn-action" id="themePreset">
+              <optgroup label="Basic Themes">
+                <option value="default" ${currentTheme === 'default' ? 'selected' : ''}>Black (Default)</option>
+                <option value="red" ${currentTheme === 'red' ? 'selected' : ''}>Red</option>
+                <option value="blue" ${currentTheme === 'blue' ? 'selected' : ''}>Blue</option>
+                <option value="green" ${currentTheme === 'green' ? 'selected' : ''}>Green</option>
+                <option value="yellow" ${currentTheme === 'yellow' ? 'selected' : ''}>Yellow</option>
+                <option value="orange" ${currentTheme === 'orange' ? 'selected' : ''}>Orange</option>
+                <option value="purple" ${currentTheme === 'purple' ? 'selected' : ''}>Purple</option>
+                <option value="pink" ${currentTheme === 'pink' ? 'selected' : ''}>Pink</option>
+                <option value="black" ${currentTheme === 'black' ? 'selected' : ''}>Black</option>
+                <option value="white" ${currentTheme === 'white' ? 'selected' : ''}>White</option>
+              </optgroup>
+              <optgroup label="Advanced Themes">
+                <option value="cyberpunk" ${currentTheme === 'cyberpunk' ? 'selected' : ''}>Cyberpunk Night</option>
+                <option value="nordic" ${currentTheme === 'nordic' ? 'selected' : ''}>Nordic Frost</option>
+                <option value="amethyst" ${currentTheme === 'amethyst' ? 'selected' : ''}>Amethyst Purple</option>
+                <option value="midnight" ${currentTheme === 'midnight' ? 'selected' : ''}>Deep Midnight</option>
+                <option value="matrix" ${currentTheme === 'matrix' ? 'selected' : ''}>Matrix Protocol</option>
+                <option value="oceanic" ${currentTheme === 'oceanic' ? 'selected' : ''}>Oceanic Depth</option>
+                <option value="lava" ${currentTheme === 'lava' ? 'selected' : ''}>Lava Flow</option>
+                <option value="vaporwave" ${currentTheme === 'vaporwave' ? 'selected' : ''}>Vaporwave 80s</option>
+                <option value="forest" ${currentTheme === 'forest' ? 'selected' : ''}>Ancient Forest</option>
+                <option value="space" ${currentTheme === 'space' ? 'selected' : ''}>Nebula Space</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <div class="setting-row">
+            <div class="label-group">
+              <h4>Border Glow</h4>
+              <p>Adds a subtle outer glow to UI elements.</p>
+            </div>
+            <input type="checkbox" id="glowToggle" ${currentGlow}>
+          </div>
+
+          <div class="setting-row">
+            <div class="label-group">
+              <h4>Glassmorphism</h4>
+              <p>Make panels semi-transparent with a blur effect.</p>
+            </div>
+            <input type="checkbox" id="glassToggle" ${currentGlass}>
+          </div>
+
+          <div style="margin-top:20px; display:flex; justify-content:flex-end;">
+            <button class="btn-action" style="background:var(--accent); color:white;" onclick="saveAppearance()">Save Changes</button>
+          </div>
+        `;
+      }
+      else if(tabName === 'Users') {
+        content.innerHTML = `
+          <div style="margin-bottom:25px;">
+            <h4 style="color:var(--accent); margin-bottom:15px;">Incoming Requests</h4>
+            <div id="requestsList"><p style="font-size:12px; opacity:0.5;">Loading...</p></div>
+          </div>
+          <div style="margin-bottom:25px;">
+            <h4 style="color:var(--accent); margin-bottom:15px;">Friends List</h4>
+            <div id="friendsList"><p style="font-size:12px; opacity:0.5;">Loading...</p></div>
+          </div>
+          <div>
+            <h4 style="color:#ff4b4b; margin-bottom:15px;">Blocked Users</h4>
+            <div id="blockedList"><p style="font-size:12px; opacity:0.5;">Loading...</p></div>
+          </div>
+        `;
+        // We must look in 'friendRequests' collection to find requests
+renderUserCategory('friendRequests', 'requestsList', 'pending'); 
+renderUserCategory('friends', 'friendsList', true);      
+renderUserCategory('blocked', 'blockedList');
+      }
+      else if (tabName === 'History') {
+    content.innerHTML = `
+        <div style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center;">
+            <h4 style="color:var(--accent); margin:0;">Recently Played</h4>
+            <button class="btn-action btn-small" onclick="clearHistory()" style="color:#ff4b4b;">Clear All</button>
+        </div>
+        <div id="historyList"><p style="font-size:12px; opacity:0.5;">Loading history...</p></div>
+    `;
     renderHistory();
-  </script>
+} 
+else {
+    content.innerHTML = `<h3>${tabName}</h3><p style="color:#666;">This module is being optimized.</p>`;
+}
+    }
+
+    async function saveAppearance() {
+      const user = auth.currentUser;
+      if (!user) return alert("Session expired.");
+
+      const settings = {
+        accentColor: document.getElementById('accentPicker').value,
+        textColor: document.getElementById('textPicker').value,
+        themePreset: document.getElementById('themePreset').value,
+        borderGlow: document.getElementById('glowToggle').checked,
+        glassMode: document.getElementById('glassToggle').checked,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+
+      try {
+        await db.collection("users").doc(user.uid).collection("settings").doc("appearance").set(settings, { merge: true });
+        
+        // Apply Accent and Text colors immediately
+        document.documentElement.style.setProperty('--accent', settings.accentColor);
+        document.documentElement.style.setProperty('--text', settings.textColor);
+        
+        loadUserTheme(user.uid); // <--- Add this
+        alert("Appearance saved successfully!");
+      } catch (error) {
+        console.error("Save failed:", error);
+       alert("Error: Could not save settings.");
+      }
+    }
+
+    async function renderUserCategory(col, containerId, filterValue = null) {
+    const container = document.getElementById(containerId);
+    let query = db.collection("users").doc(auth.currentUser.uid).collection(col);
+    
+    // Fix: Only apply the 'added' filter for friends. 
+    // The 'blocked' collection does not use this field.
+    if (col === 'friends' && filterValue !== null) {
+        query = query.where("added", "==", filterValue);
+    }
+
+    const snap = await query.get();
+    if(snap.empty) { container.innerHTML = `<p style="font-size:12px; opacity:0.3;">None found.</p>`; return; }
+    
+    container.innerHTML = '';
+    snap.forEach(async d => {
+        const u = await db.collection("users").doc(d.id).get();
+        if(!u.exists) return;
+        const data = u.data();
+        const bio = data.bio ? (data.bio.length > 50 ? data.bio.substring(0, 50) + "..." : data.bio) : "No bio.";
+        const item = document.createElement('div');
+        item.className = 'user-list-item';
+        
+        let btns = '';
+        if (filterValue === true) {
+            btns = `<button class="btn-action btn-small" style="color:#ff4b4b;" onclick="updateRel('${d.id}','unfriend')">Unfriend</button>`;
+        } else if (filterValue === 'pending') {
+            btns = `<button class="btn-action btn-small" onclick="updateRel('${d.id}','accept')">Accept</button>`;
+        } else if (col === 'blocked') {
+            btns = `<button class="btn-action btn-small" onclick="updateRel('${d.id}','unblock')">Unblock User</button>`;
+        }
+
+        item.innerHTML = `<img src="${data.photoURL||''}" class="user-list-pfp"><div class="user-list-info"><span class="user-list-name">${data.username}</span><span class="user-list-bio">${bio}</span></div><div class="user-list-actions">${btns}</div>`;
+        container.appendChild(item);
+    });
+}
+
+    async function updateRel(tid, action) {
+        const uid = auth.currentUser.uid;
+        if(action === 'accept') {
+            await db.collection("users").doc(uid).collection("friends").doc(tid).set({a:true});
+            await db.collection("users").doc(tid).collection("friends").doc(uid).set({a:true});
+            await db.collection("users").doc(uid).collection("friendRequests").doc(tid).delete();
+        } else if(action === 'unfriend') {
+            await db.collection("users").doc(uid).collection("friends").doc(tid).delete();
+            await db.collection("users").doc(tid).collection("friends").doc(uid).delete();
+        } else if(action === 'unblock') {
+            await db.collection("users").doc(uid).collection("blocked").doc(tid).delete();
+            // Force the tab to refresh so the user disappears from the list
+            switchTab(document.querySelector('.s-tab.active'), 'Users');
+        }
+        switchTab(document.querySelector('.s-tab.active'), 'Users');
+    }
+    async function renderHistory() {
+    const container = document.getElementById('historyList');
+    const uid = auth.currentUser.uid;
+    
+    // Fetches last 20 played games ordered by timestamp
+    const snap = await db.collection("users").doc(uid)
+                        .collection("history")
+                        .orderBy("playedAt", "desc")
+                        .limit(20)
+                        .get();
+
+    if (snap.empty) {
+        container.innerHTML = `<p style="font-size:12px; opacity:0.3;">No games played yet.</p>`;
+        return;
+    }
+
+    container.innerHTML = '';
+    snap.forEach(doc => {
+        const game = doc.data();
+        const date = game.playedAt ? new Date(game.playedAt.seconds * 1000).toLocaleDateString() : "Recently";
+        
+        const item = document.createElement('div');
+        item.className = 'user-list-item'; // Reusing your existing style for consistency
+        item.innerHTML = `
+            <img src="${game.icon || 'https://via.placeholder.com/40'}" class="user-list-pfp" style="border-radius: 4px;">
+            <div class="user-list-info">
+                <span class="user-list-name">${game.title || 'Unknown Game'}</span>
+                <span class="user-list-bio">Played on: ${date}</span>
+            </div>
+            <div class="user-list-actions">
+                <button class="btn-action btn-small" onclick="location.href='games.html?id=${doc.id}'">Play Again</button>
+            </div>
+        `;
+        container.appendChild(item);
+    });
+}
+
+// Optional: Function to clear history
+async function clearHistory() {
+    if(!confirm("Are you sure you want to wipe your game history?")) return;
+    const uid = auth.currentUser.uid;
+    const snap = await db.collection("users").doc(uid).collection("history").get();
+    
+    const batch = db.batch();
+    snap.forEach(doc => batch.delete(doc.ref));
+    await batch.commit();
+    
+    renderHistory();
+}
+  </script>
 </body>
 </html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile | Game Paradise</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { background: #0f0f12; color: white; font-family: sans-serif; margin: 0; }
+    
+    /* Top Bar */
+    .top-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 25px;
+        background: #1a1a20;
+    }
+    .gear-icon {
+        width: 28px; height: 28px;
+        cursor: pointer;
+        transition: transform 0.4s ease;
+        filter: invert(1); /* Makes a black icon white */
+    }
+    .gear-icon:hover { transform: rotate(90deg); }
+
+    .profile-card {
+        max-width: 450px;
+        margin: 40px auto;
+        background: #1a1a20;
+        padding: 30px;
+        border-radius: 20px;
+        text-align: center;
+        border: 1px solid #333;
+    }
+
+    /* Profile Image with Dark Hover */
+    .pfp-container {
+        position: relative;
+        width: 120px; height: 120px;
+        margin: 0 auto 15px;
+        cursor: pointer;
+        border-radius: 50%;
+        overflow: hidden;
+    }
+    .pfp-main {
+        width: 100%; height: 100%;
+        object-fit: cover;
+        border: 3px solid #00d4ff;
+        transition: 0.3s;
+    }
+    .pfp-overlay {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        background: rgba(0,0,0,0.7); /* Darkens 20-30% */
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+        color: white;
+        opacity: 0;
+        transition: 0.3s;
+    }
+    .pfp-container:hover .pfp-overlay { opacity: 1; }
+
+    .input-group { text-align: left; margin-top: 20px; }
+    label { font-size: 11px; color: #888; text-transform: uppercase; }
+    
+    select, textarea {
+        width: 100%; background: #0b0b0e; color: white; border: 1px solid #333;
+        padding: 12px; border-radius: 8px; margin: 8px 0 15px 0; font-family: inherit;
+    }
+    
+    .save-btn {
+        background: #00d4ff; color: black; border: none; width: 100%;
+        padding: 14px; border-radius: 8px; font-weight: bold; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div class="top-nav">
+    <a href="homepage.html" style="color: #888; text-decoration: none;">← Home</a>
+    <a href="settings.html">
+        <img src="https://img.icons8.com/ios-filled/50/000000/settings.png" class="gear-icon" alt="Settings">
+    </a>
+</div>
+
+<div class="profile-card">
+    <div class="pfp-container" onclick="updatePFP()">
+        <img id="userImg" class="pfp-main" src="defaultprofile.img">
+        <div class="pfp-overlay">UPLOAD IMAGE</div>
+    </div>
+
+    <h2 id="userName">Loading...</h2>
+    
+    <div class="input-group">
+        <label>Status Mode</label>
+        <select id="statusSelect">
+            <option value="auto">🤖 Auto (Smart Detect)</option>
+            <option value="active">🟢 Active</option>
+            <option value="idle">🟡 Idle</option>
+            <option value="inactive">🔴 Inactive</option>
+        </select>
+
+        <label>Bio / Description</label>
+        <textarea id="bioInput" placeholder="Tell people about yourself..."></textarea>
+    </div>
+
+    <button class="save-btn" onclick="saveProfile()">Save Profile</button>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+
+<script>
+    // 1. CONFIG
+    const firebaseConfig = {
+        apiKey: "AIzaSyAgsZ68VNL-b5AsWnzll2g_C1Yhw7IowlY",
+        authDomain: "gameparadiserawdata.firebaseapp.com",
+        projectId: "gameparadiserawdata",
+        appId: "1:6326540558:web:8115f5520f0737b239df5f"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // 2. LOAD DATA
+    auth.onAuthStateChanged(user => {
+        if (user) {
+            document.getElementById('userName').innerText = user.displayName;
+            db.collection("users").doc(user.uid).get().then(doc => {
+                if (doc.exists) {
+                    const d = doc.data();
+                    document.getElementById('userImg').src = d.photoURL || user.photoURL || 'defaultprofile.img';
+                    document.getElementById('statusSelect').value = d.status || 'auto';
+                    document.getElementById('bioInput').value = d.bio || '';
+                }
+            });
+        } else {
+            window.location.href = "login.html";
+        }
+    });
+
+    // 3. UPDATE PFP (LINK METHOD - NO CARD NEEDED)
+    function updatePFP() {
+        const url = prompt("Enter the direct link to your image (e.g., from Discord or Imgur):");
+        if (url && url.trim() !== "") {
+            document.getElementById('userImg').src = url;
+            // Save link to Firestore immediately
+            const user = auth.currentUser;
+            db.collection("users").doc(user.uid).update({ photoURL: url });
+        }
+    }
+
+    // 4. SAVE BUTTON
+    function saveProfile() {
+        const user = auth.currentUser;
+        db.collection("users").doc(user.uid).set({
+            status: document.getElementById('statusSelect').value,
+            bio: document.getElementById('bioInput').value,
+            lastSeen: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true }).then(() => alert("Profile Saved!"));
+    }
+</script>
+</body>
+</html>

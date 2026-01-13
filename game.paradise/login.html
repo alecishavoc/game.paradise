@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Game Paradise</title>
+    <style>
+        :root {
+            --bg: #0f0f12;
+            --surface: #1a1a20;
+            --accent: #00d4ff;
+            --text: #ffffff;
+        }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .login-card {
+            background: var(--surface);
+            padding: 40px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border: 1px solid #333;
+        }
+        .google-btn {
+            background: white;
+            color: #444;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            transition: 0.3s;
+        }
+        .google-btn:hover {
+            background: #e1e1e1;
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-card">
+        <h1>Game Paradise</h1>
+        <p>Log in to access games and chat</p>
+        
+        <button class="google-btn" onclick="signIn()">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/pwa_loader.node_modules/superagent/docs/images/google.png" width="18">
+            Continue with Google
+        </button>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAgsZ68VNL-b5AsWnzll2g_C1Yhw7IowlY",
+            authDomain: "gameparadiserawdata.firebaseapp.com",
+            projectId: "gameparadiserawdata",
+            storageBucket: "gameparadiserawdata.firebasestorage.app",
+            messagingSenderId: "6326540558",
+            appId: "1:6326540558:web:8115f5520f0737b239df5f"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        async function signIn() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            
+            try {
+                const result = await auth.signInWithPopup(provider);
+                const user = result.user;
+                const userRef = db.collection("users").doc(user.uid);
+                
+                // Fetch the user document to check for an existing username
+                const doc = await userRef.get();
+                let username = "";
+
+                if (doc.exists && doc.data().username) {
+                    // Use existing username if it exists
+                    username = doc.data().username;
+                } else {
+                    // Prompt for a new username
+                    const chosenName = prompt("Choose a unique username:", user.email.split('@')[0]);
+                    // Standardize: lowercase and remove spaces
+                    username = chosenName ? chosenName.toLowerCase().replace(/\s+/g, '') : user.email.split('@')[0].toLowerCase();
+                }
+
+                // Save or Update user data
+                await userRef.set({
+                    displayName: user.displayName,
+                    email: user.email.toLowerCase(),
+                    username: username,
+                    photoURL: user.photoURL,
+                    lastSeen: firebase.firestore.FieldValue.serverTimestamp(),
+                    presence: "active",
+                    status: "auto"
+                }, { merge: true });
+
+                console.log("Profile updated with username:", username);
+                window.location.replace("homepage.html");
+
+            } catch (error) {
+                console.error("Login Error:", error.code);
+                alert(error.message);
+            }
+        }
+
+        // AUTO-REDIRECT LOGIC
+        auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                const doc = await db.collection("users").doc(user.uid).get();
+                
+                // Only redirect if document exists AND a username has been set
+                if (doc.exists && doc.data().username) {
+                    console.log("Account and username confirmed. Redirecting...");
+                    window.location.replace("homepage.html");
+                } else {
+                    // Stay on login page if username needs to be created
+                    console.log("Username missing. Please click the button to set your username.");
+                }
+            }
+        });
+    </script>
+</body>
+</html>

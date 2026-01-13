@@ -219,3 +219,159 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Iframe Layout Fixes ---------- */
+
+html, body {
+  overflow: hidden; /* Prevents the main page from having scrollbars */
+  height: 100%;
+}
+
+/* Override your existing .container to make the iframe fill the space */
+.container {
+  padding: 0; /* Removes the 20px padding you had */
+  margin: 0;
+  width: 100%;
+  height: calc(100vh - 50px); /* Adjusts height based on your app-bar */
+}
+
+iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+/* Optional: Smooth fade-in for the iframe content */
+.fade-up {
+  animation: fadeUp .25s ease forwards;
+}
+
+/* Homepage top games */
+
+.container {
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 25px; /* Space between the two rows */
+  overflow-y: auto;
+}
+
+.games-row {
+  display: grid;
+  /* Forces exactly 8 icons per row */
+  grid-template-columns: repeat(8, 1fr); 
+  gap: 15px;
+  width: 100%;
+}
+
+.game-icon {
+  aspect-ratio: 1 / 1; /* Keeps them perfectly square */
+  background-color: var(--surface);
+  background-size: cover;
+  background-position: center;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.game-icon:hover {
+  transform: scale(1.08);
+  border-color: var(--accent);
+}
+
+/* Responsive fix: If the screen is too small, it scrolls sideways instead of breaking */
+@media (max-width: 1000px) {
+  .games-row {
+    grid-template-columns: repeat(8, 120px);
+    overflow-x: auto;
+    padding-bottom: 10px;
+  }
+}
+
+:root {
+  --bg: #0b0b0b;
+  --surface: #121212;
+  --text: #eaeaea;
+  --accent: #3aa0ff;
+  --border: #222;
+  --radius: 10px;
+}
+
+body, html {
+  margin: 0; padding: 0;
+  height: 100%; width: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Arial, sans-serif;
+  overflow: hidden;
+}
+
+.hidden { display: none !important; }
+
+/* ---------- App Bar ---------- */
+.app-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  background: #111; padding: 10px 20px; height: 60px; box-sizing: border-box;
+  border-bottom: 1px solid #222;
+}
+
+.nav a { color: var(--text); text-decoration: none; margin: 0 10px; font-weight: bold; }
+.nav a.active { color: var(--accent); }
+
+.search input { padding: 8px; border-radius: var(--radius); border: 1px solid #333; background: #222; color: var(--text); }
+
+/* ---------- Layout & Grid ---------- */
+.container {
+  padding: 30px; height: calc(100vh - 110px);
+  overflow-y: auto; display: flex; flex-direction: column; gap: 20px;
+}
+
+/* Custom Scrollbar */
+.container::-webkit-scrollbar { width: 8px; }
+.container::-webkit-scrollbar-track { background: var(--bg); }
+.container::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+.container::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+.games-row {
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: 15px; width: 100%;
+}
+
+.game-icon {
+  aspect-ratio: 1/1; background-color: var(--surface); background-size: cover; background-position: center;
+  border-radius: var(--radius); border: 1px solid var(--border); cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+}
+
+.game-icon:hover { 
+  transform: scale(1.08); 
+  border-color: var(--accent); 
+  box-shadow: 0 0 15px var(--accent);
+}
+
+/* ---------- Footer & Overlay ---------- */
+.site-footer {
+  position: fixed; bottom: 0; width: 100%; height: 50px; background: #080808;
+  border-top: 1px solid #222; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; box-sizing: border-box; z-index: 100;
+}
+
+.footer-left { line-height: 1.2; }
+.version-display { color: var(--accent); font-weight: bold; font-size: 14px; }
+.update-text { font-size: 10px; opacity: 0.6; }
+.footer-center { position: absolute; left: 50%; transform: translateX(-50%); font-size: 12px; opacity: 0.5; }
+
+.update-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.9); backdrop-filter: blur(8px); z-index: 1000;
+  display: flex; justify-content: center; align-items: center;
+}
+
+.overlay-content {
+  width: 90%; max-width: 700px; max-height: 70vh; background: var(--surface);
+  padding: 30px; border-radius: var(--radius); overflow-y: auto; border: 1px solid #333; position: relative;
+}
+
+.close-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; color: white; font-size: 28px; cursor: pointer; }
+
