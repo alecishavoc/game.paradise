@@ -121,6 +121,8 @@
       <a href="games.html">Games</a>
       <a href="settings.html" class="active">Settings</a>
       <a href="proxy.html">Proxy</a>
+      <a href="chat.html">Chat</a>
+      <a href="media.html">Media</a>
     </div>
     <div class="profile-trigger" onclick="location.href='profile.html'">
       <div id="userProfilePic" class="pfp-small"></div>
@@ -352,8 +354,24 @@ renderUserCategory('blocked', 'blockedList');
     `;
     renderHistory();
 } 
-else {
-    content.innerHTML = `<h3>${tabName}</h3><p style="color:#666;">This module is being optimized.</p>`;
+else if (tabName === 'Extras') {
+  content.innerHTML = `
+    <div class="setting-row">
+      <div class="label-group">
+        <h4>Credits</h4>
+        <p>See who worked on Game Paradise.</p>
+      </div>
+      <button class="btn-action" onclick="openCredits()">View Credits</button>
+    </div>
+
+    <div class="setting-row">
+      <div class="label-group">
+        <h4>Request a Game</h4>
+        <p>Suggest a new game to be added.</p>
+      </div>
+      <button class="btn-action" onclick="openGameRequest()">Request</button>
+    </div>
+  `;
 }
     }
 
@@ -486,6 +504,56 @@ async function clearHistory() {
     
     renderHistory();
 }
+function openCredits() {
+  document.getElementById('creditsModal').style.display = 'flex';
+}
+
+function closeCredits() {
+  document.getElementById('creditsModal').style.display = 'none';
+}
+
+function openGameRequest() {
+  // 🔗 Replace this with your real Google Form link
+  window.open(
+    "https://forms.gle/H6E9UGXChyBbxLsY9",
+    "_blank"
+  );
+}
+
   </script>
+<div id="creditsModal" style="
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: none;
+  z-index: 3000;
+  align-items: center;
+  justify-content: center;
+">
+  <div style="
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 30px;
+    width: 90%;
+    max-width: 500px;
+    animation: fadeIn 0.3s ease;
+  ">
+    <h2 style="margin-top:0; color:var(--accent);">Credits</h2>
+
+    <!-- 🔽 EASY TO EDIT SECTION -->
+    <p><strong>Creator:</strong> Alec</p>
+    <p><strong>Proxy:</strong> Aldrin (proxy is boredom v2)</p>
+    <p><strong>Games:</strong> Ultimate Game Stash</p>
+    <p><strong>media:</strong> ambr0sial/nova</p>
+    <p><strong>inspriation:</strong> vapor.my and like 10 other gaming sites</p>
+    <p><strong>Playtesters:</strong> no one so far</p>
+
+    <div style="margin-top:25px; text-align:right;">
+      <button class="btn-action" onclick="closeCredits()">Close</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
