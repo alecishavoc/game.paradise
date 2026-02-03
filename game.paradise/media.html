@@ -198,7 +198,7 @@
     <div class="nav">
       <a href="homepage.html">Home</a>
       <a href="games.html">Games</a>
-      <a href="media.html" class="active">Media</a>
+      <a href="proxy.html" class="active">Media</a>
       <a href="settings.html">Settings</a>
       <a href="chat.html">Chat</a>
       <a href="media.html">Media</a>
@@ -231,8 +231,8 @@
 
     <div class="control-group">
         <select class="dropdown-select" id="proxyStatus" onchange="fetchMovies()">
-          <option value="none">Non-Proxied</option>
           <option value="uv">Proxied</option>
+          <option value="none">Non-Proxied</option>
         </select>
       </div>
   </div>
@@ -323,7 +323,7 @@ function encodeUV(str) {
 const availableSources = [
   {
     id: "vidsrcxyz",
-    name: "VidSrcXyz (Recommended)",
+    name: "VidSrcXyz",
     urls: {
       movie: "https://vidsrc-embed.ru/embed/movie?tmdb={id}",
       tv: "https://vidsrc-embed.ru/embed/tv?tmdb={id}&season={season}&episode={episode}",
@@ -331,12 +331,21 @@ const availableSources = [
   },
   {
     id: "mapletv",
-    name: "Maple Tv",
+    name: "Maple Tv (recomended)",
     urls: {
       movie: "https://mappletv.uk/watch/movie/{id}",
       tv: "https://mappletv.uk/watch/tv/{id}-{season}-{episode}",
     },
   },
+  {
+  id: "vidify",
+  name: "Vidify",
+  urls: {
+    movie: "https://vidify.top/movie/{id}",
+    tv: "https://vidify.top/tv/{id}/{season}/{episode}",
+  },
+},
+
   {
     id: "vidlinkpro",
     name: "VidLink Pro",
@@ -491,10 +500,12 @@ async function openMenu(id, title, type) {
     document.getElementById('playerFrame').style.display = 'none';
     document.getElementById('placeholderView').style.display = 'flex';
 
-    // Set Default Source if not social
-    if (type === 'tv' || type === 'movie') {
-        currentSourceUrl = availableSources[0].urls[type];
-    }
+   // Set default source to Maple TV
+if (type === 'tv' || type === 'movie') {
+    const maple = availableSources.find(s => s.id === "mapletv");
+    currentSourceUrl = maple?.urls[type] || availableSources[0].urls[type];
+}
+
 
     if (type === 'tv') {
         tvControls.style.display = 'flex';
@@ -605,15 +616,29 @@ function updatePlayerSource() {
             .replace(/{season}/g, season)
             .replace(/{episode}/g, episode);
 
-        // Always use the raw URL regardless of the proxy dropdown state
-        finalUrl = rawUrl;
+       // Proxied mode = external launch only (no URL modification)
+finalUrl = rawUrl;
+
     }
 
-    // Always play in the iframe, regardless of whether "Proxied" is selected
+    // Logic for Launch Button vs Auto-Play
     if (finalUrl) {
-        player.src = finalUrl;
-        player.style.display = 'block';
-        placeholder.style.display = 'none';
+        // If Proxied and NOT YouTube/Twitch, show the button
+        if (isProxied && currentType !== 'YouTube' && currentType !== 'Twitch') {
+            pendingUrl = finalUrl;
+            placeholder.innerHTML = `
+                <h2 style="margin-bottom:10px;">Source Ready</h2>
+                <button onclick="launchMedia()" style="padding:12px 25px; background:var(--accent); color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:16px; box-shadow: 0 4px 15px rgba(58,160,255,0.3);">
+                    🚀 Launch in New Tab
+                </button>
+                <p style="opacity: 0.5; font-size:12px; margin-top:15px;">Proxied mode requires external window but is unblocked.</p>
+            `;
+        } else {
+            // Keep original behavior for YouTube, Twitch, and standard Movies
+            player.src = finalUrl;
+            player.style.display = 'block';
+            placeholder.style.display = 'none';
+        }
     }
 }
 
@@ -653,7 +678,7 @@ function toggleView(view) {
 fetchMovies();
 auth.onAuthStateChanged(user => {
   if (!user) {
-    window.location.href = "login.html";
+    window.location.href = "index.html";
     return;
   }
 
