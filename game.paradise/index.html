@@ -56,10 +56,19 @@
         <h1>Game Paradise</h1>
         <p>Log in to access games and chat</p>
         
-        <button class="google-btn" onclick="signIn()">
-            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/pwa_loader.node_modules/superagent/docs/images/google.png" width="18">
-            Continue with Google
-        </button>
+       <button class="google-btn" onclick="signIn()">
+  <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/pwa_loader.node_modules/superagent/docs/images/google.png" width="18">
+  Continue with Google
+</button>
+
+<button
+  class="google-btn"
+  style="background:#2a2a33;color:white;justify-content:center"
+  onclick="enterIncognito()"
+>
+  Continue as Guest
+</button>
+
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
@@ -123,20 +132,29 @@
         }
 
         // AUTO-REDIRECT LOGIC
-        auth.onAuthStateChanged(async (user) => {
-            if (user) {
-                const doc = await db.collection("users").doc(user.uid).get();
-                
-                // Only redirect if document exists AND a username has been set
-                if (doc.exists && doc.data().username) {
-                    console.log("Account and username confirmed. Redirecting...");
-                    window.location.replace("homepage.html");
-                } else {
-                    // Stay on login page if username needs to be created
-                    console.log("Username missing. Please click the button to set your username.");
-                }
-            }
-        });
+       auth.onAuthStateChanged(async (user) => {
+  // 🚫 If guest mode is active, DO NOTHING
+  if (localStorage.getItem("incognito") === "true") return;
+
+  if (user) {
+    const doc = await db.collection("users").doc(user.uid).get();
+    
+    if (doc.exists && doc.data().username) {
+      console.log("Account and username confirmed. Redirecting...");
+      window.location.replace("homepage.html");
+    }
+  }
+});
+
+        function enterIncognito() {
+  const guestId = Math.random().toString(36).slice(2, 8);
+
+  localStorage.setItem("incognito", "true");
+  localStorage.setItem("guestName", "guest_" + guestId);
+
+  window.location.replace("homepage.html");
+}
+
     </script>
 </body>
 </html>

@@ -255,6 +255,9 @@
 
     let selectedId = null;
 
+// 🕶️ Incognito flag
+const isIncognito = new URLSearchParams(window.location.search).has('incognito');
+
     function loadUserTheme(uid) {
         return db.collection("users").doc(uid).collection("settings").doc("appearance").get().then(doc => {
             if (doc.exists) {
@@ -318,32 +321,57 @@
         });
     }
 
-    auth.onAuthStateChanged(async user => {
-        // Trigger the visual loader every time auth state is checked
-        triggerLoadingScreen();
+auth.onAuthStateChanged(async user => {
+    triggerLoadingScreen();
 
-        if(user) {
-            // Wait for theme to fetch and apply CSS variables before continuing
-            await loadUserTheme(user.uid);
-            
-            updateStatus('active');
-            db.collection("users").doc(user.uid).get().then(doc => {
-                if(doc.exists) {
-                    document.getElementById('userProfilePic').style.backgroundImage = `url('${doc.data().photoURL}')`;
-                }
-            });
-            loadFriends(user);
-        } else { 
-            window.location.href = "index.html"; 
+    // 🕶️ INCOGNITO MODE (no Firebase usage)
+    if (!user && isIncognito) {
+        console.log("Incognito mode active");
+
+        // Neutral profile icon
+        const pfp = document.getElementById('userProfilePic');
+        pfp.style.backgroundImage = 'none';
+        pfp.style.border = '1px dashed var(--border)';
+
+        // Replace friends bar
+        document.getElementById('friendsRow').innerHTML = `
+            <div class="friend-card">
+                <div class="hollow-circle add-btn-circle">👻</div>
+                <span style="font-size:10px; font-weight:bold; opacity:.5;">INCOGNITO</span>
+            </div>
+        `;
+
+        return; // ⛔ DO NOT TOUCH FIREBASE
+    }
+
+    // 🔐 NORMAL LOGGED-IN USER
+    if (user) {
+        await loadUserTheme(user.uid);
+
+        updateStatus('active');
+        const doc = await db.collection("users").doc(user.uid).get();
+        if (doc.exists) {
+            document.getElementById('userProfilePic').style.backgroundImage =
+                `url('${doc.data().photoURL}')`;
         }
-    });
+        loadFriends(user);
+    } else {
+        window.location.href = "index.html";
+    }
+});
+
 
     // --- Social Engine ---
-    function openSocialHub() { 
-      document.getElementById('socialModal').style.display = 'flex'; 
-      document.getElementById('tabBar').style.display = 'flex';
-      switchTab('search'); 
-    }
+   function openSocialHub() { 
+  if (isIncognito) {
+    alert("Social features are disabled in Incognito Mode.");
+    return;
+  }
+  document.getElementById('socialModal').style.display = 'flex'; 
+  document.getElementById('tabBar').style.display = 'flex';
+  switchTab('search'); 
+}
+
     
     function closeModal() { document.getElementById('socialModal').style.display = 'none'; }
 
@@ -542,14 +570,14 @@
     let lastActivity = Date.now();
     const IDLE_TIMEOUT = 3 * 60 * 1000; // 3 minutes
 
-    function updateStatus(status) {
-        if (!auth.currentUser) return;
-        const statusRef = rtdb.ref(`/status/${auth.currentUser.uid}`);
-        
-        // Tells the server: if connection is lost, set to offline
-        statusRef.onDisconnect().set('offline');
-        statusRef.set(status);
-    }
+   function updateStatus(status) {
+    if (isIncognito || !auth.currentUser) return;
+    const statusRef = rtdb.ref(`/status/${auth.currentUser.uid}`);
+    
+    statusRef.onDisconnect().set('offline');
+    statusRef.set(status);
+}
+
 
     // Monitor for user interactions
     ['mousedown', 'keydown', 'touchstart', 'mousemove'].forEach(evt => {
