@@ -117,18 +117,41 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
 
 <script>
-    // 1. CONFIG
-    const firebaseConfig = {
-        apiKey: "AIzaSyAgsZ68VNL-b5AsWnzll2g_C1Yhw7IowlY",
-        authDomain: "gameparadiserawdata.firebaseapp.com",
-        projectId: "gameparadiserawdata",
-        appId: "1:6326540558:web:8115f5520f0737b239df5f"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+   // 1. CONFIG
+const firebaseConfig = {
+    apiKey: "AIzaSyAgsZ68VNL-b5AsWnzll2g_C1Yhw7IowlY",
+    authDomain: "gameparadiserawdata.firebaseapp.com",
+    projectId: "gameparadiserawdata",
+    appId: "1:6326540558:web:8115f5520f0737b239df5f"
+};
+const isIncognito = new URLSearchParams(window.location.search).get('incognito') === '1';
 
-    // 2. LOAD DATA
+if (!isIncognito) {
+    firebase.initializeApp(firebaseConfig);
+}
+const auth = isIncognito ? null : firebase.auth();
+const db = isIncognito ? null : firebase.firestore();
+
+// Preserve incognito mode across page navigation
+if (isIncognito) {
+    document.querySelectorAll('a[href]').forEach(link => {
+        const url = new URL(link.href, window.location.origin);
+        url.searchParams.set('incognito', '1');
+        link.href = url.toString();
+    });
+}
+
+   // 2. LOAD DATA
+if (isIncognito) {
+    // Show incognito message
+    document.querySelector('.profile-card').innerHTML = `
+        <div style="text-align: center; padding: 50px 20px;">
+            <h1 style="font-size: 48px; margin-bottom: 20px;">🕵️</h1>
+            <h2 style="color: #00d4ff; margin-bottom: 15px;">You're in incognito mode silly</h2>
+            <p style="color: #888; font-size: 14px;">Profile settings are not available in incognito mode.</p>
+        </div>
+    `;
+} else {
     auth.onAuthStateChanged(user => {
         if (user) {
             document.getElementById('userName').innerText = user.displayName;
@@ -144,27 +167,30 @@
             window.location.href = "index.html";
         }
     });
+}
 
-    // 3. UPDATE PFP (LINK METHOD - NO CARD NEEDED)
-    function updatePFP() {
-        const url = prompt("Enter the direct link to your image (e.g., from Discord or Imgur):");
-        if (url && url.trim() !== "") {
-            document.getElementById('userImg').src = url;
-            // Save link to Firestore immediately
-            const user = auth.currentUser;
-            db.collection("users").doc(user.uid).update({ photoURL: url });
-        }
-    }
-
-    // 4. SAVE BUTTON
-    function saveProfile() {
+// 3. UPDATE PFP (LINK METHOD - NO CARD NEEDED)
+function updatePFP() {
+    if (isIncognito) return;
+    const url = prompt("Enter the direct link to your image (e.g., from Discord or Imgur):");
+    if (url && url.trim() !== "") {
+        document.getElementById('userImg').src = url;
+        // Save link to Firestore immediately
         const user = auth.currentUser;
-        db.collection("users").doc(user.uid).set({
-            status: document.getElementById('statusSelect').value,
-            bio: document.getElementById('bioInput').value,
-            lastSeen: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true }).then(() => alert("Profile Saved!"));
+        db.collection("users").doc(user.uid).update({ photoURL: url });
     }
+}
+
+// 4. SAVE BUTTON
+function saveProfile() {
+    if (isIncognito) return;
+    const user = auth.currentUser;
+    db.collection("users").doc(user.uid).set({
+        status: document.getElementById('statusSelect').value,
+        bio: document.getElementById('bioInput').value,
+        lastSeen: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true }).then(() => alert("Profile Saved!"));
+}
 </script>
 </body>
 </html>

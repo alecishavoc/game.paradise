@@ -29,18 +29,36 @@
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
 
   <script>
-    const firebaseConfig = {
-        apiKey: "AIzaSyAgsZ68VNL-b5AsWnzll2g_C1Yhw7IowlY",
-        authDomain: "gameparadiserawdata.firebaseapp.com",
-        projectId: "gameparadiserawdata",
-        appId: "1:6326540558:web:8115f5520f0737b239df5f"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+const firebaseConfig = {
+    apiKey: "AIzaSyAgsZ68VNL-b5AsWnzll2g_C1Yhw7IowlY",
+    authDomain: "gameparadiserawdata.firebaseapp.com",
+    projectId: "gameparadiserawdata",
+    appId: "1:6326540558:web:8115f5520f0737b239df5f"
+};
+const isIncognito = new URLSearchParams(window.location.search).get('incognito') === '1';
 
-    function loadUserTheme(uid) {
-        db.collection("users").doc(uid).collection("settings").doc("appearance").get().then(doc => {
+if (!isIncognito) {
+    firebase.initializeApp(firebaseConfig);
+}
+const auth = isIncognito ? null : firebase.auth();
+const db = isIncognito ? null : firebase.firestore();
+// Preserve incognito mode across page navigation
+if (isIncognito) {
+    document.querySelectorAll('.nav a').forEach(link => {
+        const url = new URL(link.href);
+        url.searchParams.set('incognito', '1');
+        link.href = url.toString();
+    });
+    
+    // Also update profile trigger if it exists
+    const profileTrigger = document.querySelector('.profile-trigger');
+    if (profileTrigger) {
+        profileTrigger.onclick = () => location.href = 'profile.html?incognito=1';
+    }
+}
+function loadUserTheme(uid) {
+    if (isIncognito) return;
+    db.collection("users").doc(uid).collection("settings").doc("appearance").get().then(doc => {
             if (doc.exists) {
                 const data = doc.data();
                 const root = document.documentElement;
@@ -78,6 +96,9 @@
         });
     }
 
+    if (isIncognito) {
+    // Skip authentication in incognito mode
+} else {
     auth.onAuthStateChanged(user => {
         if (user) {
             loadUserTheme(user.uid);
@@ -90,6 +111,7 @@
             window.location.href = "index.html";
         }
     });
+}
   </script>
 </body>
 </html>

@@ -258,6 +258,21 @@
 // 🕶️ Incognito flag
 const isIncognito = new URLSearchParams(window.location.search).has('incognito');
 
+// Preserve incognito mode across page navigation
+if (isIncognito) {
+    document.querySelectorAll('.nav a').forEach(link => {
+        const url = new URL(link.href);
+        url.searchParams.set('incognito', '1');
+        link.href = url.toString();
+    });
+    
+    // Also update profile trigger
+    const profileTrigger = document.querySelector('.profile-trigger');
+    if (profileTrigger) {
+        profileTrigger.onclick = () => location.href = 'profile.html?incognito=1';
+    }
+}
+
     function loadUserTheme(uid) {
         return db.collection("users").doc(uid).collection("settings").doc("appearance").get().then(doc => {
             if (doc.exists) {

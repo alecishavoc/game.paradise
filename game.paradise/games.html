@@ -284,13 +284,32 @@ z-index: 1001;
         databaseURL: "https://gameparadiserawdata-default-rtdb.firebaseio.com",
         appId: "1:6326540558:web:8115f5520f0737b239df5f"
     };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
-    const rtdb = firebase.database();
-    const STORAGE_KEYS = { history: 'fnf_history', recent: 'fnf_recent', status: 'user_status' };
+    const isIncognito = new URLSearchParams(window.location.search).get('incognito') === '1';
     
-    const stashes = {
+    if (!isIncognito) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const auth = isIncognito ? null : firebase.auth();
+    const db = isIncognito ? null : firebase.firestore();
+    const rtdb = isIncognito ? null : firebase.database();
+    const STORAGE_KEYS = { history: 'fnf_history', recent: 'fnf_recent', status: 'user_status' };
+
+// Preserve incognito mode across page navigation
+if (isIncognito) {
+    document.querySelectorAll('.nav a').forEach(link => {
+        const url = new URL(link.href);
+        url.searchParams.set('incognito', '1');
+        link.href = url.toString();
+    });
+    
+    // Also update profile trigger
+    const profileTrigger = document.querySelector('.profile-trigger');
+    if (profileTrigger) {
+        profileTrigger.onclick = () => location.href = 'profile.html?incognito=1';
+    }
+}
+
+const stashes = {
   "ParadiseStash": {
     repo: "alecishavoc/game.paradisegames2",
     path: "UGS-Files",
@@ -2521,27 +2540,28 @@ z-index: 1001;
     ];
 
     function init() {
-  // LOGIN CHECK
-  auth.onAuthStateChanged(user => {
-    if (user) {
-      // SECURE: Update RTDB with current page
-      rtdb.ref(`/status/${user.uid}`).set('Browsing Library');
+      if (isIncognito) {
+        localStorage.setItem(STORAGE_KEYS.status, 'incognito');
+        renderRecent();
+        applyUpdateLog();
+        generateLibrary();
+        return;
+      }
       
-      // User is logged in: Load App
-      localStorage.setItem(STORAGE_KEYS.status, 'online');
+      auth.onAuthStateChanged(user => {
+        if (user) {
+          rtdb.ref(`/status/${user.uid}`).set('Browsing Library');
+          localStorage.setItem(STORAGE_KEYS.status, 'online');
           loadUserTheme(user.uid);
-          // Get Profile Pic
           db.collection("users").doc(user.uid).get().then(doc => {
             if(doc.exists && doc.data().photoURL) {
               document.getElementById('userProfilePic').style.backgroundImage = `url('${doc.data().photoURL}')`;
             }
           });
-
           renderRecent();
           applyUpdateLog();
           generateLibrary();
         } else {
-          // Not logged in: Redirect
           window.location.href = "index.html";
         }
       });
@@ -2607,23 +2627,20 @@ z-index: 1001;
     }
 
     async function launchGame(fileName, displayName, stashName) {
-  // SECURE: Update Live Activity (RTDB - Overwrites old activity to save space)
-  if (auth.currentUser) {
-      rtdb.ref(`/status/${auth.currentUser.uid}`).set('Playing: ' + displayName);
-      
-      // ARCHIVE: Save to Firestore history (Moves processing off RTDB)
-      db.collection("users").doc(auth.currentUser.uid).collection("history").add({
-    title: displayName, 
-    playedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    icon: "" 
-}).then(() => {
-    console.log("SENT TO FIREBASE SUCCESSFULLY");
-}).catch((error) => {
-    console.error("FIREBASE REJECTED THE DATA: ", error);
-});
-  }
+      if (!isIncognito && auth.currentUser) {
+        rtdb.ref(`/status/${auth.currentUser.uid}`).set('Playing: ' + displayName);
+        db.collection("users").doc(auth.currentUser.uid).collection("history").add({
+          title: displayName, 
+          playedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          icon: "" 
+        }).then(() => {
+          console.log("SENT TO FIREBASE SUCCESSFULLY");
+        }).catch((error) => {
+          console.error("FIREBASE REJECTED THE DATA: ", error);
+        });
+      }
 
-  localStorage.setItem(STORAGE_KEYS.status, 'playing: ' + displayName);
+      localStorage.setItem(STORAGE_KEYS.status, 'playing: ' + displayName);
 
       const stash = stashes[stashName];
       const normalized = fileName.includes('.') ? fileName : fileName + '.html';
@@ -2692,6 +2709,7 @@ z-index: 1001;
     }
     // --- PASTE START ---
     function loadUserTheme(uid) {
+        if (isIncognito) return;
         db.collection("users").doc(uid).collection("settings").doc("appearance").get().then(doc => {
             if (doc.exists) {
                 const data = doc.data();
@@ -2765,33 +2783,34 @@ z-index: 1001;
 
     init();
     // --- Activity Tracker ---
-let lastActivity = Date.now();
-function updateStatus(status) {
-    if (!auth.currentUser) return;
-    rtdb.ref(`/status/${auth.currentUser.uid}`).onDisconnect().set('offline');
-    rtdb.ref(`/status/${auth.currentUser.uid}`).set(status);
-}
-
-// Track page movement
-['mousedown', 'keydown', 'mousemove', 'touchstart'].forEach(evt => {
-    window.addEventListener(evt, () => {
-        if (Date.now() - lastActivity > 5000) { // Throttled to 5s
-            lastActivity = Date.now();
-            updateStatus('active');
-        }
-    });
-});
-
-// Idle Check
-setInterval(() => {
-    if (Date.now() - lastActivity > 3 * 60 * 1000) updateStatus('idle');
-}, 30000);
-// Add this to tell the database you are on the "Library" page
-auth.onAuthStateChanged(user => {
-    if (user) {
-        rtdb.ref(`/status/${user.uid}`).set('Browsing Library');
+    let lastActivity = Date.now();
+    function updateStatus(status) {
+        if (isIncognito || !auth || !auth.currentUser) return;
+        rtdb.ref(`/status/${auth.currentUser.uid}`).onDisconnect().set('offline');
+        rtdb.ref(`/status/${auth.currentUser.uid}`).set(status);
     }
-});
+
+    if (!isIncognito) {
+        ['mousedown', 'keydown', 'mousemove', 'touchstart'].forEach(evt => {
+            window.addEventListener(evt, () => {
+                if (Date.now() - lastActivity > 5000) {
+                    lastActivity = Date.now();
+                    updateStatus('active');
+                }
+            });
+        });
+
+        setInterval(() => {
+            if (Date.now() - lastActivity > 3 * 60 * 1000) updateStatus('idle');
+        }, 30000);
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                rtdb.ref(`/status/${user.uid}`).set('Browsing Library');
+            }
+        });
+    }
+
   </script>
 </body>
 </html>
